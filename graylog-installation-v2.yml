@@ -31,6 +31,12 @@
         path: /opt/graylog
         state: directory
 
+    - name: DNS
+      delegate_to: localhost
+      lineinfile:
+        path: /etc/resolv.conf
+        line: 'nameserver 178.22.122.100'
+        state: present
 
     - name: dl elasticsearch
       delegate_to: localhost
