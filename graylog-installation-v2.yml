@@ -1,0 +1,89 @@
+- hosts: graylog
+  vars:
+    - elasticsearch_url: https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-7.10.2-amd64.deb
+    - mongodb_url: https://repo.mongodb.org/apt/ubuntu/dists/focal/mongodb-org/5.0/multiverse/binary-amd64/mongodb-org-server_5.0.23_amd64.deb 
+    - gl_repo_url: https://packages.graylog2.org/repo/packages/graylog-5.2-repository_latest.deb 
+  tasks:
+    - name: set timezone UTC
+      ansible.builtin.shell: |
+        timedatectl set-timezone UTC
+
+    - name: add libssl repo
+      apt_repository:
+        repo: 'deb http://security.ubuntu.com/ubuntu focal-security main'
+        state: present
+
+    - name: update package lists
+      apt:
+        update_cache: yes
+
+    - name: install packages
+      apt:
+        name: 
+          - wget
+          - curl
+          - gnupg
+          - libssl1.1
+        state: present
+
+    - name: Creates directory
+      ansible.builtin.file:
+        path: /opt/graylog
+        state: directory
+
+
+    - name: dl elasticsearch
+      delegate_to: localhost
+      get_url:
+        url: "{{ elasticsearch_url }}"
+        dest: /tmp/
+
+
+    - name: dl mongodb
+      delegate_to: localhost
+      get_url:
+        url: "{{ mongodb_url }}"
+        dest: /tmp/
+
+    - name: dl graylog repo and package
+      delegate_to: localhost
+      get_url:
+        url: "{{ gl_repo_url }}"
+        dest: /tmp/
+
+    - name: install graylog repo
+      delegate_to: localhost
+      apt:
+        deb: /tmp/graylog-5.2-repository_latest.deb 
+
+    - name: download only graylog to local system
+      delegate_to: localhost
+      ansible.builtin.shell: |
+        cd /tmp/
+        apt download graylog-server
+
+    - name: Copy mongodb to remote host
+      copy:
+        src: /tmp/mongodb-org-server_5.0.23_amd64.deb 
+        dest: /opt/graylog/mongodb-org-server_5.0.23_amd64.deb 
+
+    - name: Copy elasticsearch to remote host
+      copy:
+        src: /tmp/elasticsearch-7.10.2-amd64.deb 
+        dest: /opt/graylog/elasticsearch-7.10.2-amd64.deb
+
+    - name: Copy graylog-server to remote host
+      copy:
+        src: /tmp/graylog-server_5.2.3-1_amd64.deb
+        dest: /opt/graylog/graylog-server_5.2.3-1_amd64.deb
+
+
+    - name: install packages
+      apt:
+        deb: "{{ item }}" 
+        state: present
+      loop:
+        - /opt/graylog/elasticsearch-7.10.2-amd64.deb 
+        - /opt/graylog/mongodb-org-server_5.0.23_amd64.deb
+        - /opt/graylog/graylog-server_5.2.3-1_amd64.deb
+
